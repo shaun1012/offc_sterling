@@ -1,0 +1,110 @@
+#!/usr/bin/python
+
+import csv
+import requests
+import json
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from requests.auth import HTTPBasicAuth
+import os,sys
+import logging as logger
+import urllib3
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+urllib3.disable_warnings()
+
+
+#cookie = None
+#########################################################
+amc = "am**********etworks.com"
+key_id = "XXXXXXXXXXXXXXXXXxx"
+key_val = "***************************88"
+#########################################################
+
+def login_api(amc, key_id, key_val):
+    login_url = 'https://' + str(amc) + '/new/webservice/login/key/modScanWifi/86400'
+    logger.info("Login URL : " + str(login_url))
+    headers = {'Content-type': 'application/json'}
+    logger.info("Login Header : " + str(headers))
+    body = '{"type":"apikeycredentials","keyId":"' + str(key_id) + '","keyValue":"'+ str(key_val) + '"}'
+    logger.info("Login Body : " + str(body))
+    r = requests.request("POST", login_url, data=body, headers=headers, verify=False)
+    cookie = r.cookies
+    return cookie
+
+#s = requests.session()
+
+ssid = {
+  'type': 'ssidprofile',
+  'templateId':1295,
+  'temlateName':'Peoples Guest Wifi',
+  'mncTemplateId':0
+}
+
+def fetch_device_template(amc,temp_id, cookie):
+        temp_url ='https://' + str(amc) + '/new/webservice/v4/templates/'+ str(temp_id) +'/DEVICE_TEMPLATE'
+        headers = {'Content-type': 'application/json'}
+        #r = s.get(temp_url,headers=headers, verify=False)
+        #r = s.get(temp_url, auth=HTTPBasicAuth('admin', 'admin'), verify=False)
+        r = requests.request("GET", temp_url, timeout=3600, cookies=cookie,headers=headers, verify=False)
+        #return  r.json()
+        #return r.status_code, r.reason, r.text
+        print(temp_url)
+#       print(r.json())
+        return r.json()
+
+
+#with open('template_ids.csv','r') as tempids:
+ # reader =csv.reader(tempids)
+  #for row in reader:
+   # for temp_id in row:
+    #  fetch_device_template(amc,temp_id,s)
+if __name__=='__main__':
+        logger.info("######################### Start of Main Script!!! #########################")
+        #s = requests.session()
+        cookie = login_api(amc, key_id, key_val)
+        logger.info("Trying Login to the MWM : " + str(amc))
+        #status, reason, resp = login_api(s, amc, key_id, key_val)
+        #logger.info("Status: " + str(status) + ", Reason: " + str(reason))
+        with open('template_ids.csv','r') as tempids:
+                reader =csv.reader(tempids)
+                for row in reader:
+                        for temp_id in row:
+                                org_data =fetch_device_template(amc,temp_id, cookie)
+                                data=org_data
+                                for platform in data['platformToRadioSettingsMapper']['platformToRadioSettingsMap']:
+                                        for platfrom_data in  data['platformToRadioSettingsMapper']['platformToRadioSettingsMap'][platform]:
+                                                if(platfrom_data['configured'] == True and platfrom_data['operatingMode'] != 'SENSOR_ONLY'):
+                                                        #print(platfrom_data['ssidProfiles'])
+                                                        platfrom_data['ssidProfiles'].append(ssid)
+                                                        #data['platformToRadioSettingsMapper']['platformToRadioSettingsMap'][platform][platfrom_data]['ssidProfiles'].append(ssid)
+                                                        #print('AFTER')
+                                                        #print(platfrom_data['ssidProfiles'])
+                                                        #print(data)
+                                                        #temp_url ='https://' + str(amc) + '/new/webservice/v4/templates/'+ str(temp_id) +'/DEVICE_TEMPLATE'
+                                                        #headers = {'Content-type': 'application/json'}
+                                                        #updateapi = requests.post(temp_url, data=data, timeout=3600, cookies,headers=headers, verify=False)
+                                #print(json.dumps(data))
+                                temp_url ='https://' + str(amc) + '/new/webservice/v4/templates'
+                                print(temp_url)
+                                head = {'Content-type': 'application/json'}
+                                response = requests.post(url =temp_url, data=(json.dumps(data)) ,headers=head, verify=False, cookies=cookie)
+                                print(response.text) #TEXT/HTML
+                                print(response.status_code, response.reason) #HTTP
+
+
+
+
+
+#if str(status) != "200":
+#    logger.error("No Successful Status code...Exiting!!")
+#    sys.exit()
+#logger.debug("Body: " + str(resp))
+#logger.info("Trying to fetch the details of Rogue AP...")
+#logger.info("Fetching the Location Tree...")
+#logger.info("Fetching the Device Templates...")
+#status, reason, resp = fetch_loc_tree(s, amc)
+#logger.info("Status: " + str(status) + ", Reason: " + str(reason))
+#if str(status) != "200":
+#   logger.error("No Successful Status code...Exiting!!")
+
+[root@Spectraguard sterling]#
